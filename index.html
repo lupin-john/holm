@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Horizon Player</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap');
+
+  :root{
+    --bg: #05030a;
+    --bg2: #0c0714;
+    --warm: #f2e7d8;
+    --muted: #8f8579;
+    --ring: #ffd9a0;
+    --fila-dark: #200902;
+    --fila-mid1: #7a2c05;
+    --fila-mid2: #c9540c;
+    --fila-bright: #ffb347;
+    --fila-hot: #fff3d6;
+    --speed: 6s;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0; padding:0; height:100%;
+    background: radial-gradient(ellipse at 50% 30%, var(--bg2), var(--bg) 70%);
+    color: var(--warm);
+    font-family: 'Space Grotesk', sans-serif;
+    overflow-x:hidden;
+  }
+
+  .stars{
+    position:fixed; inset:0; z-index:0;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, #fff, transparent),
+      radial-gradient(1px 1px at 70% 60%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 40% 80%, #fff, transparent),
+      radial-gradient(1px 1px at 85% 15%, #fff, transparent),
+      radial-gradient(1px 1px at 10% 65%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 60% 10%, #fff, transparent),
+      radial-gradient(1px 1px at 90% 85%, #fff, transparent),
+      radial-gradient(1px 1px at 30% 50%, #fff, transparent);
+    background-size: 100% 100%;
+    opacity:0.6;
+  }
+
+  .wrap{
+    position:relative; z-index:1;
+    min-height:100%;
+    display:flex; flex-direction:column; align-items:center;
+    padding: 32px 20px 60px;
+  }
+
+  h1{
+    font-weight:500; font-size:1.05rem; letter-spacing:0.02em;
+    color: var(--muted); margin: 0 0 6px;
+  }
+  h1 span{ color: var(--warm); }
+
+  .title-input-row{
+    display:flex; gap:8px; width:100%; max-width:420px; margin: 10px 0 30px;
+  }
+  .title-input-row input{
+    flex:1; background:#150f1e; border:1px solid #2a2135; color:var(--warm);
+    border-radius:10px; padding:12px 14px; font-family:inherit; font-size:0.9rem;
+    outline:none;
+  }
+  .title-input-row input:focus{ border-color: var(--fila-mid2); }
+  .title-input-row button{
+    background: var(--fila-mid2); color:#1a0d02; border:none; border-radius:10px;
+    padding:0 18px; font-family:inherit; font-weight:700; font-size:0.9rem;
+    cursor:pointer;
+  }
+
+  .scene{
+    position:relative;
+    width: min(90vw, 420px);
+    height: min(90vw, 420px);
+    display:flex; align-items:center; justify-content:center;
+    margin-top: 10px;
+  }
+
+  .glow{
+    position:absolute; width:78%; height:78%; border-radius:50%;
+    background: radial-gradient(circle, rgba(255,140,50,0.32), transparent 70%);
+    filter: blur(20px);
+    z-index:0;
+  }
+
+  /* shared filament texture: fine streaky "iron filing" stripes in one orange family,
+     a radial layer for inner/outer shading, and an asymmetric highlight for the
+     brighter (approaching) side of the disk */
+  .fila-texture{
+    background-image:
+      conic-gradient(from 200deg,
+        rgba(255,255,255,0.28) 0deg, rgba(255,255,255,0) 80deg,
+        rgba(255,255,255,0) 240deg, rgba(0,0,0,0.3) 330deg, rgba(0,0,0,0.3) 360deg),
+      radial-gradient(ellipse at center,
+        rgba(255,246,222,0.55) 0%, rgba(255,170,80,0.35) 30%,
+        rgba(150,60,15,0.25) 65%, rgba(30,10,3,0.55) 100%),
+      url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAC4ElEQVR4nO1ZXWsTQRTN4/0V9+fcf6CiAaF+oaGliqDVammfLK3Wqv3gvBTbImrVUGsRoQ8WsfhgsU9e/Oh/ub4kJUmzszM7sxsUDyzs7px7zkl2MpOZrdUyIEwLwrSQ1f4fPRCmG5WZmWLPFHut898+NcJ0utxUOTDFTtFaYTrhyXtaRHxXmHYD+LeF6VywUQBM8SWFyIU8jjA9EaZhYRp26PxytO0WjNf2vxhTnxSmuJxESJi2hWk7iVi2x5IwLZXpURmEaTOFyGzndbv/C9Naz/1FUyy6tExxqXWMm2Lc0/+VKc6G5o6CMD0K5J8vK0vlMMW+KfYd7XVT1KvM1AVh2ui9Z4prqfRNcS+meN4U86nClAZTbJpic9A5kkOYmj3XDWFqlO0b9dSFadYUD9LFKQZT/MglCdOqMK1mtH1InqpsmGJMmNY6JzVToOocwvRCmFZ6sjU6L6ZNMR1pciamvh9MMWeKudS6IQGapmjmM4/474JNhCnqm3foLpniWQ5nxdVuio+OWv+BJeUOhSluxmoI04QwTaQIc2iKw8CaY09cmMb6cYVpsmC0wUKYXscKtNcEJ0NrTXHfk5d81Opn8rVsj5BdkSLi10sT98/gXAV2wWenzRRvoxJ1QJimhGnKh2sK96gjTF2TiCk+R2QrjN7Fjyl2gnYGTXFgioMA/lZAvpopRk0xGlLjKxzU303xLXkIt996CHko4/7RglyY6sKUu/g2xbEdDGF66R2mu25dmN60/b0LTfG+dfT9YFXAFN8H5V0tTHHLFDOmmMnjCtOVKjLVavG72f8e2q+Z/hqYYtIUk4POEQxhcv67NMVyxv2HDs1lYepb18FJs5UTOtN6avoOEqdSe7vMnrfPTdF3hRULUwy1jrtl6A8GwvSpBM0RYRpxcUyx0dk9fbqUr/ljh2nQAt7hEd23TXEnj/AzQGwr9sduispmdSdMMWyKzJffZRofCNPVyo0j8Af+lHbJp5rzbwAAAABJRU5ErkJggg=="),
+      linear-gradient(var(--fila-mid2), var(--fila-mid2));
+    background-size: 100% 100%, 100% 100%, 28px 28px, 100% 100%;
+    background-position: 0 0, 0 0, 0 0, 0 0;
+    background-repeat: no-repeat, no-repeat, repeat, no-repeat;
+    image-rendering: pixelated;
+  }
+
+  .disk{
+    position:absolute;
+    width: 100%;
+    height: 34%;
+    left:0; top:50%;
+    transform: translateY(-50%);
+    border-radius:50%;
+    filter: saturate(1.1);
+    animation: spin var(--speed) linear infinite;
+    animation-play-state: paused;
+    box-shadow: 0 0 40px 6px rgba(255,120,30,0.35);
+  }
+
+  .diskBack{ z-index:1; }
+  .diskFront{
+    z-index:5;
+    clip-path: polygon(0% 45%, 100% 45%, 100% 100%, 0% 100%);
+  }
+
+  .sphere{
+    position:relative; z-index:3;
+    width: 40%; aspect-ratio:1/1;
+    border-radius:50%;
+    background: radial-gradient(circle at 35% 35%, #1a1420, #000 65%);
+    box-shadow:
+      0 0 0 1px rgba(255,217,160,0.15),
+      0 0 22px 4px rgba(255,217,160,0.25),
+      0 0 60px 12px rgba(255,120,40,0.18);
+  }
+
+  /* lensing halo: a plain circle sitting BEHIND the sphere, slightly larger than it,
+     so only its rim peeks out around the sphere's edge — approximates gravitational
+     lensing without needing a CSS mask (masks were causing the render glitch) */
+  .lensRing{
+    position:absolute; z-index:2;
+    top:50%; left:50%;
+    width: 58%; aspect-ratio:1/1;
+    border-radius:50%;
+    transform: translate(-50%,-50%);
+    animation: spinCenter var(--speed) linear infinite;
+    animation-play-state: paused;
+    filter: saturate(1.1);
+  }
+
+  @keyframes spin{
+    from{ transform: translateY(-50%) rotate(0deg); }
+    to{ transform: translateY(-50%) rotate(360deg); }
+  }
+  @keyframes spinCenter{
+    from{ transform: translate(-50%,-50%) rotate(0deg); }
+    to{ transform: translate(-50%,-50%) rotate(360deg); }
+  }
+
+  .status{
+    margin-top: 26px; font-size:0.85rem; color:var(--muted);
+    text-align:center; min-height: 1.2em;
+  }
+
+  .controls{
+    width:100%; max-width:420px; margin-top: 18px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+
+  .row{ display:flex; align-items:center; gap:12px; }
+  .row label{ font-size:0.8rem; color:var(--muted); width:110px; flex-shrink:0; }
+  input[type="range"]{
+    flex:1; -webkit-appearance:none; height:4px; border-radius:2px;
+    background: linear-gradient(90deg, var(--fila-dark), var(--fila-mid2), var(--fila-bright));
+    outline:none;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+    background: var(--warm); border:2px solid var(--fila-mid2); cursor:pointer;
+  }
+
+  .playbtn{
+    align-self:center; margin-top:6px;
+    background:none; border:1px solid #3a2f45; color:var(--warm);
+    border-radius:999px; padding:10px 28px; font-family:inherit;
+    font-size:0.9rem; cursor:pointer; letter-spacing:0.02em;
+  }
+  .playbtn:hover{ border-color: var(--fila-mid2); }
+
+  .note{
+    max-width:420px; margin-top:22px; font-size:0.75rem; line-height:1.6;
+    color:var(--muted); text-align:center;
+  }
+
+  #ytplayer{ display:none; }
+</style>
+</head>
+<body>
+
+<div class="stars"></div>
+
+<div class="wrap">
+  <h1>Event Horizon <span>Player</span></h1>
+
+  <div class="title-input-row">
+    <input id="urlInput" type="text" placeholder="유튜브 링크를 붙여넣어줘">
+    <button id="loadBtn">불러오기</button>
+  </div>
+
+  <div class="scene">
+    <div class="glow"></div>
+    <div class="disk diskBack fila-texture"></div>
+    <div class="sphere"></div>
+    <div class="lensRing fila-texture"></div>
+    <div class="disk diskFront fila-texture"></div>
+  </div>
+
+  <div class="status" id="status">링크를 불러오면 여기에 곡 정보가 떠</div>
+
+  <button class="playbtn" id="playBtn">재생</button>
+
+  <div class="controls">
+    <div class="row">
+      <label>템포 (속도)</label>
+      <input type="range" id="tempo" min="40" max="200" value="100">
+    </div>
+  </div>
+
+  <div class="note">
+    유튜브 소리를 브라우저에서 직접 분석하는 건 보안 정책 때문에 막혀 있어서,<br>
+    노래의 실제 템포에 맞춰 위 슬라이더를 움직이면 원반 속도가 그에 맞게 바뀌어.<br>
+    재생/일시정지 상태에 따라 자동으로 돌고 멈춰.
+  </div>
+
+  <div id="ytplayer"></div>
+</div>
+
+<script>
+  const diskEls = document.querySelectorAll('.disk, .lensRing');
+  const tempoSlider = document.getElementById('tempo');
+  const statusEl = document.getElementById('status');
+  const playBtn = document.getElementById('playBtn');
+  const urlInput = document.getElementById('urlInput');
+  const loadBtn = document.getElementById('loadBtn');
+
+  function applySpeed(bpm){
+    // higher bpm -> shorter animation duration -> faster spin
+    const duration = Math.max(1.2, 14 - (bpm / 200) * 12);
+    document.documentElement.style.setProperty('--speed', duration + 's');
+  }
+  applySpeed(100);
+  tempoSlider.addEventListener('input', () => applySpeed(Number(tempoSlider.value)));
+
+  function setSpinning(isSpinning){
+    diskEls.forEach(el => {
+      el.style.animationPlayState = isSpinning ? 'running' : 'paused';
+    });
+  }
+
+  function extractVideoId(url){
+    const m = url.match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  let player;
+  let apiReady = false;
+  let pendingVideoId = null;
+
+  window.onYouTubeIframeAPIReady = function(){
+    apiReady = true;
+    player = new YT.Player('ytplayer', {
+      height: '1', width: '1',
+      events: {
+        'onStateChange': onPlayerStateChange
+      }
+    });
+    if(pendingVideoId){ loadVideo(pendingVideoId); }
+  };
+
+  function onPlayerStateChange(e){
+    if(e.data === YT.PlayerState.PLAYING){
+      setSpinning(true);
+      playBtn.textContent = '일시정지';
+      const data = player.getVideoData();
+      statusEl.textContent = data && data.title ? data.title : '재생 중';
+    } else if(e.data === YT.PlayerState.PAUSED){
+      setSpinning(false);
+      playBtn.textContent = '재생';
+    } else if(e.data === YT.PlayerState.ENDED){
+      setSpinning(false);
+      playBtn.textContent = '재생';
+      statusEl.textContent = '재생이 끝났어';
+    }
+  }
+
+  function loadVideo(id){
+    if(!apiReady){ pendingVideoId = id; return; }
+    player.loadVideoById(id);
+    statusEl.textContent = '불러오는 중...';
+  }
+
+  loadBtn.addEventListener('click', () => {
+    const id = extractVideoId(urlInput.value.trim());
+    if(!id){
+      statusEl.textContent = '유튜브 링크를 다시 확인해줘';
+      return;
+    }
+    loadVideo(id);
+  });
+
+  playBtn.addEventListener('click', () => {
+    if(!player || !apiReady){ return; }
+    const state = player.getPlayerState();
+    if(state === YT.PlayerState.PLAYING){
+      player.pauseVideo();
+    } else {
+      player.playVideo();
+    }
+  });
+
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.body.appendChild(tag);
+</script>
+
+</body>
+</html>
